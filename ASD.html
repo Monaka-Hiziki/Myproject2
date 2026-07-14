@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>数学パズル・デュエル：サバイバル</title>
+    <style>
+        body { background: radial-gradient(circle at center, #1a1a3c 0%, #0a0a1e 100%); color: #fff; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .container { background: rgba(10, 10, 30, 0.95); border: 2px solid #f1c40f; border-radius: 20px; padding: 30px; width: 650px; text-align: center; box-shadow: 0 0 30px rgba(241, 196, 15, 0.4); }
+        .stats { display: flex; justify-content: space-between; font-size: 1.2em; color: #f1c40f; margin-bottom: 10px; }
+        .rule-display { border: 1px solid #3498db; padding: 10px; margin: 10px 0; color: #3498db; text-align: left; font-size: 0.9em; }
+        input { width: 70px; padding: 8px; font-size: 1.2em; background: #000; border: 1px solid #fff; color: #fff; text-align: center; }
+        button { padding: 10px 20px; font-size: 1.1em; cursor: pointer; background: #e74c3c; color: #fff; border: none; border-radius: 5px; margin: 5px; }
+        #timerBar { width: 100%; height: 10px; background: #333; margin: 10px 0; }
+        #timerFill { width: 100%; height: 100%; background: #2ecc71; transition: width 0.1s linear; }
+        #gameArea { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container" id="mainBox">
+        <!-- タイトル画面 -->
+        <div id="titleScreen">
+            <h1 style="color:#f1c40f; font-size: 3em;">数学パズル・デュエル</h1>
+            <p>Enter または Space を押して開始</p>
+        </div>
+
+        <!-- ゲーム画面 -->
+        <div id="gameArea">
+            <div class="stats">
+                <span>SCORE: <span id="score">0</span></span>
+                <span>TIME: <span id="time">15</span>s</span>
+            </div>
+            <div id="timerBar"><div id="timerFill"></div></div>
+            <h2 id="modeTitle"></h2>
+            <div class="rule-display" id="ruleText"></div>
+            <div id="quizArea" style="font-size: 1.4em; font-weight: bold; margin: 20px 0;"></div>
+            <div id="inputArea"></div>
+            <button onclick="check()">判定を実行</button>
+            <p id="feedback" style="font-weight:bold; color: #ffcccc;"></p>
+        </div>
+    </div>
+
+    <script>
+        let score = 0, timeLeft = 15, timer, quiz = {}, mode = 'ichiji', gameStarted = false;
+
+        // キーイベントでゲーム開始
+        window.addEventListener('keydown', (e) => {
+            if (!gameStarted && (e.code === 'Enter' || e.code === 'Space')) {
+                document.getElementById('titleScreen').style.display = 'none';
+                document.getElementById('gameArea').style.display = 'block';
+                gameStarted = true;
+                nextQuiz();
+                startTimer();
+            }
+        });
+
+        function startTimer() {
+            timer = setInterval(() => {
+                timeLeft -= 0.1;
+                document.getElementById('time').innerText = Math.ceil(timeLeft);
+                document.getElementById('timerFill').style.width = (timeLeft / 15 * 100) + "%";
+                if (timeLeft <= 0) { clearInterval(timer); showResult(); }
+            }, 100);
+        }
+
+        function showResult() {
+            let rank = score >= 500 ? 'S' : score >= 300 ? 'A' : score >= 100 ? 'B' : 'D';
+            let msg = rank === 'S' ? '伝説のデュエリスト！' : rank === 'A' ? '素晴らしい計算力！' : rank === 'B' ? 'デュエリストの素質あり！' : '修業が必要です...';
+            document.getElementById('mainBox').innerHTML = `<h2>RESULT</h2><p style="font-size:2em">評価: ${rank}</p><p>最終スコア: ${score}</p><p>${msg}</p><button onclick="location.reload()">再挑戦</button>`;
+        }
+
+        function nextQuiz() {
+            timeLeft = 15;
+            mode = Math.random() > 0.5 ? 'ichiji' : 'renritsu';
+            const rule = document.getElementById('ruleText');
+            const quizArea = document.getElementById('quizArea');
+            const inputArea = document.getElementById('inputArea');
+
+            if (mode === 'ichiji') {
+                document.getElementById('modeTitle').innerText = "壱時砲固定式";
+                rule.innerText = "宣言数(N)×Lv(L)＋相手カード(M)＝墓地(G)";
+                const n = Math.floor(Math.random() * 6) + 1, l = Math.floor(Math.random() * 6) + 1, m = Math.floor(Math.random() * 10) + 1;
+                quiz = { n, l, m, g: n * l + m, hidden: ['n', 'l', 'm', 'g'][Math.floor(Math.random() * 4)] };
+                quizArea.innerHTML = `(${quiz.hidden==='n'?'?':quiz.n}) * (${quiz.hidden==='l'?'?':quiz.l}) + (${quiz.hidden==='m'?'?':quiz.m}) = (${quiz.hidden==='g'?'?':quiz.g})`;
+                inputArea.innerHTML = '答え: <input type="number" id="ans">';
+            } else {
+                document.getElementById('modeTitle').innerText = "連慄砲固定式";
+                rule.innerText = "2x+y=合計枚数 かつ x+y=対象Lv";
+                quiz.x = Math.floor(Math.random() * 4) + 2; quiz.y = Math.floor(Math.random() * 4) + 2;
+                quizArea.innerHTML = `合計(z): ${2 * quiz.x + quiz.y} / 対象(a): ${quiz.x + quiz.y}`;
+                inputArea.innerHTML = 'x: <input type="number" id="xVal"> y: <input type="number" id="yVal">';
+            }
+        }
+
+        function check() {
+            let correct = false;
+            if (mode === 'ichiji') {
+                if (parseInt(document.getElementById('ans').value) === quiz[quiz.hidden]) correct = true;
+            } else {
+                const x = parseInt(document.getElementById('xVal').value), y = parseInt(document.getElementById('yVal').value);
+                if ((2 * x + y === 2 * quiz.x + quiz.y) && (x + y === quiz.x + quiz.y)) correct = true;
+            }
+
+            if (correct) {
+                score += 100;
+                document.getElementById('score').innerText = score;
+                nextQuiz();
+            } else {
+                document.getElementById('feedback').innerText = "不正解！";
+            }
+        }
+    </script>
+</body>
+</html>
